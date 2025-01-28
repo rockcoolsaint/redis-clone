@@ -13,13 +13,13 @@ async fn main() -> Result<()> {
 
     // Define the address and port for the TCP server to listen on
     // Here we're using localhost (127.0.0.1) and port 6379 (commonly used for Redis)
-    let addr = format!("127.0.0.1:{}", 6379);
+    let addr = format!("127.0.0.1:{}", 6377);
 
     // Attempt to bind the TCP listener to the specified address and port
     let listener = match TcpListener::bind(&addr).await {
         // if successful, return the TcpListener
         Ok(tcp_listener) => {
-            info!("TCP Listener started on port 6379");
+            info!("TCP Listener started on port 6377");
             tcp_listener
         },
         // If there is an error, panic and print the error message
