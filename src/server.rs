@@ -28,7 +28,7 @@ impl Server {
 				// Log the error and panic if there is an issue accepting a connection.
 				Err(e) => {
 					error!("{}", e);
-					panic!(Error accepting connection);
+					panic!("Error accepting connection");
 				}
 			};
 
