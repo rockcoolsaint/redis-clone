@@ -1,4 +1,4 @@
-use bytes::BytesMut;
+use bytes::{Bytes, BytesMut};
 
 use super::RespError;
 
@@ -150,5 +150,17 @@ impl RespType {
         Err(RespError::InvalidSimpleString(String::from(
             "Invalid value for simple string"
         )))
+    }
+
+    /// Convert the RESP value into its byte values.
+    pub fn to_bytes(&self) -> Bytes {
+        return match self {
+            RespType::SimpleString(ss) => Bytes::from_iter(format!("+{}\r\n", ss).into_bytes()),
+            RespType::BulkString(bs) => {
+                let bulkstr_bytes = format!("${}\r\n{}\r\n", bs.chars().count(), bs).into_bytes();
+                Bytes::from_iter(bulkstr_bytes)
+            }
+            RespType::SimpleError(es) => Bytes::from_iter(format!("-{}\r\n", es).into_bytes()),
+        };
     }
 }

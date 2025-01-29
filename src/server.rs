@@ -1,9 +1,12 @@
 use anyhow::{Error, Result};
+use bytes::BytesMut;
 use log::error;
 use tokio::{
-	io::AsyncWriteExt,
+	io::{AsyncReadExt, AsyncWriteExt},
 	net::{TcpListener, TcpStream}
 };
+
+use crate::resp::types::RespType;
 
 #[derive(Debug)]
 pub struct Server {
@@ -36,7 +39,21 @@ impl Server {
             // This allows the server to handle multiple connections concurrently.
 			tokio::spawn(async move {
 				// Write a "Hello!" message to the client.
-				if let Err(e) = &mut sock.write_all("Hello!".as_bytes()).await {
+				// read the TCP message and move the raw bytes into a buffer
+				let mut buffer = BytesMut::with_capacity(512);
+				if let Err(e) = sock.read_buf(&mut buffer).await {
+					panic!("Error reading request: {}", e);
+				}
+
+				// Try parsing the RESP data from the bytes in the buffer.
+				// If parsing fails return the error message as a RESP SimpleError data type.
+				let resp_data = match RespType::parse(buffer) {
+					Ok((data, _)) => data,
+					Err(e) => RespType::SimpleError(format!("{}", e)),
+				};
+
+				// Echo the RESP message back to the client.
+				if let Err(e) = &mut sock.write_all(&resp_data.to_bytes()[..]).await {
 					// Log the error and panic if there is an issue writing the response.
 					error!("{}", e);
 					panic!("Error writing response")
