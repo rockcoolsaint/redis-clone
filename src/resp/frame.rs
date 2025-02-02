@@ -1,9 +1,12 @@
+use core::fmt;
 use std::io::Error;
 
 use bytes::Buf;
 use tokio_util::codec::Decoder;
 
 use crate::resp::types::RespType;
+
+use super::RespError;
 
 /// This codec handles Nimblecache commands, which are always represented
 /// as array of bulk strings in the RESP (REdis Serialization Protocol) protocol.
@@ -124,5 +127,73 @@ impl Decoder for RespCommandFrame {
         }
 
         Ok(None)
+    }
+}
+
+/// This struct is used to accumulate the parts of a Redis-clone command, which are
+/// typically represented as an array of bulk strings in the RESP protocol.
+struct CommandBuilder {
+  parts: Vec<RespType>,
+  num_parts: usize,
+  parts_parsed: usize,
+}
+
+impl CommandBuilder {
+    /// Creates a new `CommandBuilder` with the specified number of parts.
+    pub fn new(num_parts: usize) -> CommandBuilder {
+      CommandBuilder {
+        parts: vec![],
+        num_parts,
+        parts_parsed: 0,
+      }
+    }
+
+    /// Adds a part to the command being built and increments the count of parsed parts.
+    ///
+    /// # Arguments
+    ///
+    /// * `part` - A `RespType` representing a part of the command.
+    pub fn add_part(&mut self, part: RespType) {
+      self.parts.push(part);
+      self.parts_parsed += 1;
+    }
+
+    /// Checks if all expected parts of the command have been received.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the number of parsed parts equals the expected number of parts,
+    /// `false` otherwise.
+    pub fn all_parts_received(&self) -> bool {
+      self.num_parts == self.parts_parsed
+    }
+
+    /// Builds and returns the complete command as a vector of RESP values.
+    ///
+    /// # Returns
+    ///
+    /// A vector of `RespType` containing all the parts of the command.
+    pub fn build(&self) -> Vec<RespType> {
+      self.parts.clone()
+    }
+}
+
+/// Represents error that can occur during RESP command frame parsing.
+#[derive(Debug)]
+pub struct FrameError {
+  err: RespError
+}
+
+impl FrameError {
+  pub fn from(err: RespError) -> FrameError {
+      FrameError { err }
+  }
+}
+
+impl std::error::Error for FrameError {}
+
+impl fmt::Display for FrameError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+      self.err.fmt(f)
     }
 }
