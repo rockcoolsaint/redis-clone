@@ -1,8 +1,8 @@
 use core::fmt;
 use std::io::Error;
 
-use bytes::Buf;
-use tokio_util::codec::Decoder;
+use bytes::{Buf, BufMut};
+use tokio_util::codec::{Decoder, Encoder};
 
 use crate::resp::types::RespType;
 
@@ -127,6 +127,29 @@ impl Decoder for RespCommandFrame {
         }
 
         Ok(None)
+    }
+}
+
+impl Encoder<RespType> for RespCommandFrame {
+    type Error = std::io::Error;
+
+    /// Encodes a `RespType` into bytes and writes them to the output buffer.
+    ///
+    /// It's primarily used for sending responses to redis-clone commands.
+    ///
+    /// # Arguments
+    ///
+    /// * `item` - The `RespType` to encode.
+    /// * `dst` - The output buffer to write the encoded bytes to.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(())` if the encoding was successful.
+    /// * `Err(std::io::Error)` if an error occurred during encoding.
+    fn encode(&mut self, item: RespType, dst: &mut bytes::BytesMut) -> Result<(), Self::Error> {
+        dst.put_slice(&item.to_bytes());
+
+        Ok(())
     }
 }
 
