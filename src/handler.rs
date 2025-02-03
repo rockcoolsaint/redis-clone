@@ -1,4 +1,10 @@
 use anyhow::Result;
+use futures::{SinkExt, StreamExt};
+use log::error;
+use tokio::net::TcpStream;
+use tokio_util::codec::Framed;
+
+use crate::resp::{frame::RespCommandFrame, types::RespType};
 
 /// Handles RESP command frames over a single TCP connection.
 pub struct FrameHandler {
@@ -37,7 +43,7 @@ impl FrameHandler {
           }
         }
         Err(e) => {
-          error!("Error reading the request: {}");
+          error!("Error reading the request: {}", e);
           break;
         }
       };

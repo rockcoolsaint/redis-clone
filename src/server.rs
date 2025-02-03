@@ -1,12 +1,15 @@
 use anyhow::{Error, Result};
-use bytes::BytesMut;
+// use bytes::BytesMut;
 use log::error;
-use tokio::{
-	io::{AsyncReadExt, AsyncWriteExt},
-	net::{TcpListener, TcpStream}
-};
+// use tokio::{
+// 	io::{AsyncReadExt, AsyncWriteExt},
+// 	net::{TcpListener, TcpStream}
+// };
+use tokio::net::{TcpListener, TcpStream};
+use tokio_util::codec::Framed;
 
-use crate::resp::types::RespType;
+// use crate::resp::types::RespType;
+use crate::{handler::FrameHandler, resp::frame::RespCommandFrame};
 
 #[derive(Debug)]
 pub struct Server {
@@ -23,40 +26,51 @@ impl Server {
     /// incoming connections.
 	pub async fn run(&mut self) -> Result<()> {
 		loop {
-			// accept a new TCP connection.
-            // If successful the corresponding TcpStream is stored
-            // in the variable `sock`, else a panic will occur.
-			let mut sock = match self.accept_conn().await {
-				Ok(stream) => stream,
-				// Log the error and panic if there is an issue accepting a connection.
-				Err(e) => {
-					error!("{}", e);
-					panic!("Error accepting connection");
-				}
+				// accept a new TCP connection.
+				// If successful the corresponding TcpStream is stored
+				// in the variable `sock`, else a panic will occur.
+				// let mut sock = match self.accept_conn().await {
+				// let mut sock = match self.accept_conn().await {
+				let sock = match self.accept_conn().await {
+					Ok(stream) => stream,
+					// Log the error and panic if there is an issue accepting a connection.
+					Err(e) => {
+						error!("{}", e);
+						panic!("Error accepting connection");
+					}
 			};
 
+			// Use RespCommandFrame codec to read incoming TCP messages as Redis command frames,
+			// and to write RespType values into outgoing TCP messages.
+			let resp_command_frame = Framed::with_capacity(sock, RespCommandFrame::new(), 8 * 1024);
+
+
 			// Spawn a new asynchronous task to handle the connection.
-            // This allows the server to handle multiple connections concurrently.
+      // This allows the server to handle multiple connections concurrently.
 			tokio::spawn(async move {
 				// Write a "Hello!" message to the client.
 				// read the TCP message and move the raw bytes into a buffer
-				let mut buffer = BytesMut::with_capacity(512);
-				if let Err(e) = sock.read_buf(&mut buffer).await {
-					panic!("Error reading request: {}", e);
-				}
+				// let mut buffer = BytesMut::with_capacity(512);
+				// if let Err(e) = sock.read_buf(&mut buffer).await {
+				// 	panic!("Error reading request: {}", e);
+				// }
 
 				// Try parsing the RESP data from the bytes in the buffer.
 				// If parsing fails return the error message as a RESP SimpleError data type.
-				let resp_data = match RespType::parse(buffer) {
-					Ok((data, _)) => data,
-					Err(e) => RespType::SimpleError(format!("{}", e)),
-				};
+				// let resp_data = match RespType::parse(buffer) {
+				// 	Ok((data, _)) => data,
+				// 	Err(e) => RespType::SimpleError(format!("{}", e)),
+				// };
 
 				// Echo the RESP message back to the client.
-				if let Err(e) = &mut sock.write_all(&resp_data.to_bytes()[..]).await {
-					// Log the error and panic if there is an issue writing the response.
-					error!("{}", e);
-					panic!("Error writing response")
+				// if let Err(e) = &mut sock.write_all(&resp_data.to_bytes()[..]).await {
+				// 	// Log the error and panic if there is an issue writing the response.
+				// 	error!("{}", e);
+				// 	panic!("Error writing response")
+				// }
+				let handler = FrameHandler::new(resp_command_frame);
+				if let Err(e) = handler.handle().await {
+					error!("Failed to handle command: {}", e);
 				}
 				// The connection is closed automatically when `sock` goes out of scope.
 			});
