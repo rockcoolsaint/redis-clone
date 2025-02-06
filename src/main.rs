@@ -2,6 +2,7 @@ mod command;
 mod server;
 mod resp;
 mod handler;
+mod storage;
 
 use anyhow::Result;
 use clap::Parser;
@@ -51,8 +52,11 @@ async fn main() -> Result<()> {
         Err(e) => panic!("Could not bind the TCP listener to {}. Err: {}", &addr, e)
     };
 
+    // initialize shared storage
+    let shared_storage = storage::db::Storage::new(storage::db::DB::new());
+
     // Create a new instance of the Server with the bound TcpListenerlet mut server = Server::new(listener);
-    let mut server = Server::new(listener);
+    let mut server = Server::new(listener, shared_storage);
 
     // Run the server to start accepting and handling connections
     // This will run indefinitely until the program is terminated
