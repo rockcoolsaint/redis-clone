@@ -16,7 +16,7 @@ pub enum RespType {
     /// Refer <https://redis.io/docs/latest/develop/reference/protocol-spec/#arrays>
     Array(Vec<RespType>),
     /// Refer <https://redis.io/docs/latest/develop/reference/protocol-spec/#integers>
-    Interger(i64)
+    Integer(i64)
 }
 
 impl RespType {
@@ -176,7 +176,7 @@ impl RespType {
                 Bytes::from_iter(arr_bytes)
             }
             RespType::SimpleError(es) => Bytes::from_iter(format!("-{}\r\n", es).into_bytes()),
-            RespType::Integer(i) => Bytes::from_iter(format!(":{}\r\n", i).into_bytess()),
+            RespType::Integer(i) => Bytes::from_iter(format!(":{}\r\n", i).into_bytes()),
         };
     }
 

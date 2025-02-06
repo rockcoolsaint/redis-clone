@@ -1,13 +1,19 @@
 use core::fmt;
 
 use get::Get;
+use lpush::LPush;
+use lrange::LRange;
 use ping::Ping;
+use rpush::RPush;
 use set::Set;
 
 use crate::{resp::types::RespType, storage::db::DB};
 
 mod get;
+mod lpush;
+mod lrange;
 pub mod ping;
+mod rpush;
 mod set;
 
 /// Represents the supported Nimblecache commands.
@@ -19,6 +25,12 @@ pub enum Command {
   Set(Set),
   /// The GET command
   Get(Get),
+  /// The LPUSH command
+  LPush(LPush),
+  /// The RPUSH command,
+  RPush(RPush),
+  /// The LRange command,
+  LRange(LRange)
 }
 
 impl Command {
@@ -56,6 +68,27 @@ impl Command {
                 Err(e) => return Err(e),
             }
         }
+        "lpush" => {
+            let cmd = LPush::with_args(Vec::from(args));
+            match cmd {
+                Ok(cmd) => Command::LPush(cmd),
+                Err(e) => return Err(e),
+            }
+        }
+        "rpush" => {
+            let cmd = RPush::with_args(Vec::from(args));
+            match cmd {
+                Ok(cmd) => Command::RPush(cmd),
+                Err(e) => return Err(e),
+            }
+        }
+        "lrange" => {
+            let cmd = LRange::with_args(Vec::from(args));
+            match cmd {
+                Ok(cmd) => Command::LRange(cmd),
+                Err(e) => return Err(e),
+            }
+        }
         _ => {
             return Err(CommandError::UnknownCommand(ErrUnknownCommand {
                 cmd: cmd_name,
@@ -76,6 +109,9 @@ impl Command {
       Command::Ping(ping) => ping.apply(),
       Command::Set(set) => set.apply(db),
       Command::Get(get) => get.apply(db),
+      Command::LPush(lpush) => lpush.apply(db),
+      Command::RPush(rpush) => rpush.apply(db),
+      Command::LRange(lrange) => lrange.apply(db),
     }
   }
 }
